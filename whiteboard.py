@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.13.7
+#       jupytext_version: 1.14.4
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -19,9 +19,6 @@ import seaborn as sns
 
 # %%
 # !python -V
-
-# %%
-# !pip install ipympl
 
 # %% [markdown]
 # ## Some example shapes in ABC dataset
@@ -58,7 +55,7 @@ EX_FEAT_PATH = "data/00000050_80d90bfdd2e74e709956122a_features_000.yml"
 
 # %%
 # !pip install pymeshlab
-# !pip install polyscope  # optional to render the MeshSet state
+# # !pip install polyscope  # optional to render the MeshSet state
 
 # %%
 def describe_mesh(mesh):
