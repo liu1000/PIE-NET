@@ -13,6 +13,10 @@
 # ---
 
 # %%
+# %load_ext autoreload
+# %autoreload 2
+
+# %%
 def optimize_cell_width():
     from IPython.display import display, HTML
     display(HTML("<style>.container { width:100% !important; }</style>"))
@@ -26,6 +30,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# %matplotlib inline
+# # %matplotlib notebook
+
 # %%
 # !python -V
 
@@ -34,11 +41,6 @@ import seaborn as sns
 
 # %%
 # !ls 
-
-# %%
-STEP_CHUNK_PATH = "https://archive.nyu.edu/rest/bitstreams/88598/retrieve abc_0000_step_v00.7z"
-OBJ_CHUCK_PATH = "https://archive.nyu.edu/rest/bitstreams/89085/retrieve abc_0000_obj_v00.7z"
-FEAT_CHUNK_PATH = "https://archive.nyu.edu/rest/bitstreams/89087/retrieve abc_0000_feat_v00.7z"
 
 # %%
 EX_STEP_PATH = "data/00000050_80d90bfdd2e74e709956122a_step_000.step"
@@ -58,9 +60,6 @@ EX_FEAT_PATH = "data/00000050_80d90bfdd2e74e709956122a_features_000.yml"
 #     - montecarlo (poisson disk bit slow although looked better)
 # - [ ] figure out how to define ground truth from obj and/or feat.yaml file
 #   - YL: 'Nearest neighbour' in PIE paper probably meant using the vertices defined in feature file and find the 1-NN
-
-# %%
-# !pip freeze | egrep 'pymesh'
 
 # %%
 # !pip install pymeshlab
@@ -224,6 +223,10 @@ curve_point_idxs.shape
 print("Orig # points:", len(orig_points))
 curve_point_idxs.describe()
 
+# %%
+curve_point_idxs.sort_values().diff().describe()
+# idx starts from 1 and increments by 1 at most, i.e. continous
+
 # %% [markdown]
 # #### Max curve point index << # orig points; what gives?
 # See PC plot below
@@ -237,6 +240,15 @@ curve_points.shape
 
 # %%
 plot_point_cloud(curve_points, c="g")
+
+# %%
+print(curv.loc[0, "type"])
+
+one_curve_points = orig_points[pd.Series(curv.loc[0, "vert_indices"])]
+plot_point_cloud(one_curve_points)
+
+one_curve_points_adjusted = orig_points[pd.Series(curv.loc[0, "vert_indices"])-1]
+plot_point_cloud(one_curve_points_adjusted)
 
 # %%
 
