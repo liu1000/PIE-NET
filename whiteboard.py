@@ -37,29 +37,27 @@ import seaborn as sns
 # !python -V
 
 # %% [markdown]
+# ## Download Data
+# #### `.obj` files
+
+# %%
+# # !mkdir -p data/obj
+# # only the first chunk
+# # !head -n1 data/obj_v00.txt | xargs -n 2 -P 8 sh -c 'wget --no-check-certificate $0 -O data/obj/$1'
+
+# %% [markdown]
+# #### Corresponding feat files
+
+# %%
+# # !mkdir -p data/feat
+# # only the first chunk
+# # !head -n1 data/feat_v00.txt | xargs -n 2 -P 8 sh -c 'wget --no-check-certificate $0 -O data/feat/$1'
+
+# %% [markdown]
 # ## Some example shapes in ABC dataset
 
 # %%
 # !ls 
-
-# %%
-EX_STEP_PATH = "data/00000050_80d90bfdd2e74e709956122a_step_000.step"
-EX_OBJ_PATH = "data/00000050_80d90bfdd2e74e709956122a_trimesh_000.obj"
-EX_FEAT_PATH = "data/00000050_80d90bfdd2e74e709956122a_features_000.yml"
-
-
-# %% [markdown]
-# TODO
-# - [ ] *decide which to use to load .step file, blender or gmsh
-#   - blender does not support .step file by default
-#   - [ ] *take a look at gmsh
-#   - [x] **but maybe using .obj + .feat is sufficient?**
-#     - looks feasible according to ABC paper
-# - [x] figure out how to iter through surfaces in a CAD model (loaded from a .obj file)
-#   - `pymeshlab` is promising
-#     - montecarlo (poisson disk bit slow although looked better)
-# - [ ] figure out how to define ground truth from obj and/or feat.yaml file
-#   - YL: 'Nearest neighbour' in PIE paper probably meant using the vertices defined in feature file and find the 1-NN
 
 # %%
 # !pip install pymeshlab
@@ -71,6 +69,26 @@ def describe_mesh(mesh):
     print("# edges", mesh.edge_number())
     print("# vertices", mesh.vertex_number())
 
+
+# %%
+EX_STEP_PATH = "data/00000050_80d90bfdd2e74e709956122a_step_000.step"
+EX_OBJ_PATH = "data/00000050_80d90bfdd2e74e709956122a_trimesh_000.obj"
+# EX_OBJ_PATH = "data/obj/00008338/00008338_75b44178dbe14c99b75a0738_trimesh_008.obj"
+EX_FEAT_PATH = "data/00000050_80d90bfdd2e74e709956122a_features_000.yml"
+# EX_FEAT_PATH = "data/feat/00008338/00008338_75b44178dbe14c99b75a0738_features_008.yml"
+
+# %% [markdown]
+# TODO
+# - [ ] *decide which to use to load .step file, blender or gmsh
+#   - blender does not support .step file by default
+#   - [ ] *take a look at gmsh
+#   - [x] **but maybe using .obj + .feat is sufficient?**
+#     - looks feasible according to ABC paper
+# - [x] figure out how to iter through surfaces in a CAD model (loaded from a .obj file)
+#   - `pymeshlab` is promising
+#     - montecarlo (poisson disk bit slow although looked better)
+# - [x] figure out how to define ground truth from obj and/or feat.yaml file
+#   - YL: 'Nearest neighbour' in PIE paper probably meant using the vertices defined in feature file to find the 1-NN in sampled point cloud
 
 # %%
 import pymeshlab as pml
@@ -172,23 +190,6 @@ _orig_verts.drop_duplicates().shape[0] + _sampled_pts.drop_duplicates().shape[0]
 pd.concat([_orig_verts, _sampled_pts]).drop_duplicates().shape
 
 # %% [markdown]
-# ## Download Data
-# #### `.obj` files
-
-# %%
-# # !mkdir -p data/obj
-# # only the first chunk
-# # !head -n1 data/obj_v00.txt | xargs -n 2 -P 8 sh -c 'wget --no-check-certificate $0 -O data/obj/$1'
-
-# %% [markdown]
-# #### Corresponding feat files
-
-# %%
-# # !mkdir -p data/feat
-# # only the first chunk
-# # !head -n1 data/feat_v00.txt | xargs -n 2 -P 8 sh -c 'wget --no-check-certificate $0 -O data/feat/$1'
-
-# %% [markdown]
 # ## Check `feat.yaml`
 
 # %%
@@ -201,6 +202,7 @@ def read_yaml(path):
 
 
 # %%
+# %%time
 feat = read_yaml(EX_FEAT_PATH)
 type(feat), len(feat)
 
@@ -225,7 +227,7 @@ curve_point_idxs.describe()
 
 # %%
 curve_point_idxs.sort_values().diff().describe()
-# idx starts from 1 and increments by 1 at most, i.e. continous
+# idx starts from 0 and increments by 1 at most, i.e. continous
 
 # %% [markdown]
 # #### Max curve point index << # orig points; what gives?
@@ -234,7 +236,6 @@ curve_point_idxs.sort_values().diff().describe()
 # - correctness of indices is also verified!
 
 # %%
-curve_point_idxs_0b = curve_point_idxs - 1
 curve_points = orig_points[curve_point_idxs.drop_duplicates()]
 curve_points.shape
 
@@ -247,10 +248,8 @@ print(curv.loc[0, "type"])
 one_curve_points = orig_points[pd.Series(curv.loc[0, "vert_indices"])]
 plot_point_cloud(one_curve_points)
 
-one_curve_points_adjusted = orig_points[pd.Series(curv.loc[0, "vert_indices"])-1]
-plot_point_cloud(one_curve_points_adjusted)
-
-# %%
+# one_curve_points_adjusted = orig_points[pd.Series(curv.loc[0, "vert_indices"])-1]
+# plot_point_cloud(one_curve_points_adjusted)
 
 # %% [markdown]
 # ### Corner points
@@ -269,9 +268,9 @@ def mark_corner(df: pd.DataFrame):
 # %%
 def merge_coords(df, orig_points):
     return df.assign(
-        x=df.idx_0b.map(lambda i: orig_points[i][0]),
-        y=df.idx_0b.map(lambda i: orig_points[i][1]),
-        z=df.idx_0b.map(lambda i: orig_points[i][2]),
+        x=df.idx.map(lambda i: orig_points[i][0]),
+        y=df.idx.map(lambda i: orig_points[i][1]),
+        z=df.idx.map(lambda i: orig_points[i][2]),
     )
 
 
@@ -280,7 +279,6 @@ curve_pts = (
     curve_point_idxs
         .rename("idx").to_frame()
         .pipe(mark_corner)
-        .assign(idx_0b=lambda df: df.idx - 1)
         .pipe(merge_coords, orig_points=orig_points)
 )
 curve_pts.shape
@@ -289,8 +287,8 @@ curve_pts.shape
 curve_pts
 
 # %%
-corner_point_idxs_0b = curve_pts.loc[curve_pts.is_corner ,"idx"] - 1
-corner_points = orig_points[corner_point_idxs_0b.drop_duplicates()]
+corner_point_idxs = curve_pts.loc[curve_pts.is_corner ,"idx"]
+corner_points = orig_points[corner_point_idxs.drop_duplicates()]
 corner_points.shape
 
 # %%
@@ -365,7 +363,7 @@ sampled_pts_ = (
                how="right",
                left_on="sampled_df_idx", right_index=True,
                suffixes=("_orig", None))
-        .drop(columns=["idx", "idx_0b", "sampled_df_idx"])
+        .drop(columns=["idx", "sampled_df_idx"])
         .assign(is_edge=lambda df: df.is_corner.notna(),
                 is_corner=lambda df: df.is_corner == True)
 )
