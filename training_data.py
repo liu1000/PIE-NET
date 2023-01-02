@@ -1,14 +1,18 @@
 """Training data preparations."""
 import functools
 import multiprocessing
+import pathlib
+import re
 
 import numpy as np
 import pandas as pd
 import pymeshlab as pml
 import yaml
 
+DATA_DIR = pathlib.Path("./data/")
 
 N_SAMPLING_POINTS = 8096
+
 
 def read_obj(path) -> pml.MeshSet:
     ms = pml.MeshSet()
@@ -70,6 +74,13 @@ def transfer_labels(curv: pd.DataFrame, pcloud: pd.DataFrame) -> pd.DataFrame:
     return pcloud_
 
 
+def write_pcloud(pcloud_: pd.DataFrame, feat_path):
+    filename = _format_pcloud_filename(feat_path)
+    filepath = DATA_DIR / "pcloud" / filename
+    pcloud_.to_parquet(filepath)
+    print("Wrote pcloud to", filepath)
+
+
 def _mark_corner(edge: pd.DataFrame):
     val_counts = edge.idx.value_counts()
     return edge.assign(is_corner=edge.idx.map(lambda i: val_counts[i] > 1))
@@ -87,3 +98,9 @@ def _transfer_gt_labels(row: pd.Series, pcloud: pd.DataFrame):
     dist_vects = pcloud[["x", "y", "z"]].values - row[["x", "y", "z"]].values
     dist = np.square(dist_vects).sum(axis=1)
     return dist.argmin()
+
+
+def _format_pcloud_filename(feat_path):
+    feat_path = pathlib.Path(feat_path)
+    prefix = re.match(r"([^_]+)_", feat_path.name).group(1)
+    return f"{prefix}_pcloud_points.parq"

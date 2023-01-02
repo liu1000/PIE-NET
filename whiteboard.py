@@ -25,6 +25,8 @@ if __name__ == '__main__':
     optimize_cell_width()
 
 # %%
+import pathlib
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -71,6 +73,8 @@ def describe_mesh(mesh):
 
 
 # %%
+DATA_DIR = pathlib.Path("./data/")
+
 EX_STEP_PATH = "data/00000050_80d90bfdd2e74e709956122a_step_000.step"
 EX_OBJ_PATH = "data/00000050_80d90bfdd2e74e709956122a_trimesh_000.obj"
 # EX_OBJ_PATH = "data/obj/00008338/00008338_75b44178dbe14c99b75a0738_trimesh_008.obj"
@@ -408,6 +412,84 @@ ax = plot_point_cloud(_edge_points, c="g")
 
 _corner_ponits = pcloud_.query("is_corner == True")[["x", "y", "z"]].values
 ax = plot_point_cloud(_corner_ponits, ax=ax, s=5, c="r")
+
+# %% [markdown]
+# ### Save pcloud
+
+# %%
+print(training_data._format_pcloud_filename(EX_FEAT_PATH))
+
+# %%
+training_data.write_pcloud(pcloud_, EX_FEAT_PATH)
+
+
+# %% [markdown]
+# ## EDA for feat files
+#
+# ### Q: proportion of files with uncommon types of curves
+
+# %%
+def read_curve_type_stats(path) -> pd.Series:
+    feat = training_data.read_feat(path)
+    feat_info = pd.DataFrame(feat["curves"])
+
+    return feat_info.type.value_counts()
+
+
+# %%
+# %%time
+read_curve_type_stats(EX_FEAT_PATH)
+
+# %%
+FEAT_DIR = DATA_DIR / "feat"
+
+feat_paths = [path for path in FEAT_DIR.glob("**/*features*.yml")]
+len(feat_paths)
+
+# %% [markdown]
+# ---
+# #### digress: matching obj files all exist?
+# YES
+
+# %%
+import re
+
+def get_corresponding_obj_path(feat_path):
+    path_id = feat_path.parent.name
+    obj_paths = list((DATA_DIR / "obj" / path_id).glob("*.obj"))
+    assert len(obj_paths) == 1, f"not 1-to-1 mapping for {path_id}"
+    return obj_paths[0]
+
+for feat_path in feat_paths:
+    get_corresponding_obj_path(feat_path)
+
+# %% [markdown]
+# ---
+# **~30 min** to go over the entire feature yml files
+
+# %%
+# %%time
+with multiprocessing.Pool() as pool:
+    curve_type_stats = pool.map(read_curve_type_stats, feat_paths)
+len(curve_type_stats)
+
+# %%
+curtype = (
+    pd.DataFrame(curve_type_stats)
+        .reset_index(drop=True)
+)
+curtype.shape
+
+# %%
+curtype.notna().sum()
+
+# %%
+common_curtype = (
+    curtype[curtype[["Ellipse", "Other"]].isna().all(axis=1)]
+)
+common_curtype.shape
+
+# %%
 
 # %% [markdown]
 # ## MISC
