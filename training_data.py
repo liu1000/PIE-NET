@@ -42,6 +42,7 @@ def mark_edges_and_corners(mesh: pml.Mesh, feat: dict) -> pd.DataFrame:
     curv = (
         edge_point_idxs
             .rename("idx").to_frame()
+            .rename_axis("curv_id").reset_index()
             .pipe(_mark_corner)
             .pipe(_merge_coords, orig_points=orig_points)
     )
@@ -62,6 +63,7 @@ def transfer_labels(curv: pd.DataFrame, pcloud: pd.DataFrame) -> pd.DataFrame:
                    left_on="pcloud_df_idx", right_index=True,
                    suffixes=("_orig", None))
             .drop(columns=["idx", "pcloud_df_idx"])
+            .reset_index(drop=True)
             .assign(is_edge=lambda df: df.is_corner.notna(),
                     is_corner=lambda df: df.is_corner == True)
     )

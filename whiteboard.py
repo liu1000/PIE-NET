@@ -214,6 +214,9 @@ type(curves), len(curves)
 curv = pd.DataFrame(curves)
 curv.shape
 
+# %%
+curv
+
 # %% [markdown]
 # ### Edge points
 
@@ -395,6 +398,9 @@ pcloud_ = training_data.transfer_labels(curv, pcloud)
 
 # %%
 pcloud_.sample(10)
+
+# %%
+pcloud_[pcloud_.curv_id.isin(pcloud_.curv_id.drop_duplicates().sample())]
 
 # %%
 _edge_points = pcloud_.query("is_edge == True")[["x", "y", "z"]].values
