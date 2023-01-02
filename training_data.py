@@ -10,13 +10,28 @@ import pymeshlab as pml
 import yaml
 
 DATA_DIR = pathlib.Path("./data/")
+FEAT_DIR = DATA_DIR / "feat"
 
 N_SAMPLING_POINTS = 8096
 
 
+def generate_one_pcloud(feat_path):
+    obj_path = _get_corresponding_obj_path(feat_path)
+    cad_model = read_obj(obj_path)
+    feat = read_feat(feat_path)
+
+    pcloud = sample_point_cloud(cad_model)
+
+    curv = mark_edges_and_corners(cad_model.mesh(0), feat)
+
+    pcloud_ = transfer_labels(curv, pcloud)
+
+    write_pcloud(pcloud_, orig_feat_path=feat_path)
+
+
 def read_obj(path) -> pml.MeshSet:
     ms = pml.MeshSet()
-    ms.load_new_mesh(path)
+    ms.load_new_mesh(str(path))
     return ms
 
 
@@ -74,11 +89,17 @@ def transfer_labels(curv: pd.DataFrame, pcloud: pd.DataFrame) -> pd.DataFrame:
     return pcloud_
 
 
-def write_pcloud(pcloud_: pd.DataFrame, feat_path):
-    filename = _format_pcloud_filename(feat_path)
+def write_pcloud(pcloud_: pd.DataFrame, orig_feat_path):
+    filename = _format_pcloud_filename(orig_feat_path)
     filepath = DATA_DIR / "pcloud" / filename
     pcloud_.to_parquet(filepath)
-    print("Wrote pcloud to", filepath)
+
+
+def _get_corresponding_obj_path(feat_path: pathlib.Path):
+    path_id = feat_path.parent.name
+    obj_paths = list((DATA_DIR / "obj" / path_id).glob("*.obj"))
+    assert len(obj_paths) == 1, f"not 1-to-1 mapping for {path_id}"
+    return obj_paths[0]
 
 
 def _mark_corner(edge: pd.DataFrame):

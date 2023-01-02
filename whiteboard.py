@@ -406,12 +406,19 @@ pcloud_.sample(10)
 # %%
 pcloud_[pcloud_.curv_id.isin(pcloud_.curv_id.drop_duplicates().sample())]
 
-# %%
-_edge_points = pcloud_.query("is_edge == True")[["x", "y", "z"]].values
-ax = plot_point_cloud(_edge_points, c="g")
 
-_corner_ponits = pcloud_.query("is_corner == True")[["x", "y", "z"]].values
-ax = plot_point_cloud(_corner_ponits, ax=ax, s=5, c="r")
+# %%
+def plot_edges_and_corners(pcloud_):
+    _edge_points = pcloud_.query("is_edge == True")[["x", "y", "z"]].values
+    ax = plot_point_cloud(_edge_points, c="g")
+
+    _corner_ponits = pcloud_.query("is_corner == True")[["x", "y", "z"]].values
+    ax = plot_point_cloud(_corner_ponits, ax=ax, s=5, c="r")
+    return ax
+
+
+# %%
+plot_edges_and_corners(pcloud_)
 
 # %% [markdown]
 # ### Save pcloud
@@ -443,7 +450,7 @@ read_curve_type_stats(EX_FEAT_PATH)
 # %%
 FEAT_DIR = DATA_DIR / "feat"
 
-feat_paths = [path for path in FEAT_DIR.glob("**/*features*.yml")]
+feat_paths = sorted([path for path in FEAT_DIR.glob("**/*features*.yml")])
 len(feat_paths)
 
 # %% [markdown]
@@ -489,7 +496,34 @@ common_curtype = (
 )
 common_curtype.shape
 
+# %% [markdown]
+# ## Generate point clouds
+
 # %%
+training_data.generate_one_pcloud(feat_paths[2])
+
+# %%
+loaded_pcloud = pd.read_parquet("data/pcloud/00000004_pcloud_points.parq")
+loaded_pcloud.shape
+
+# %%
+plot_point_cloud(loaded_pcloud[["x", "y", "z"]].values)
+
+# %%
+plot_edges_and_corners(loaded_pcloud)
+
+# %%
+# !pip install tqdm
+
+# %% tags=[]
+import tqdm
+
+feat_paths_to_process = tqdm.tqdm(feat_paths)
+
+with multiprocessing.Pool() as pool:
+    pool.map(training_data.generate_one_pcloud, feat_paths_to_process, chunksize=10)
+
+# 1.5 hrs
 
 # %% [markdown]
 # ## MISC
