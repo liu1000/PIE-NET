@@ -18,7 +18,7 @@ def read_obj(path) -> pml.MeshSet:
 
 def read_feat(path) -> dict:
     with open(path, "r") as fi:
-        feat = yaml.safe_load(fi)
+        feat = yaml.load(fi, yaml.CLoader)
     return feat
 
 
