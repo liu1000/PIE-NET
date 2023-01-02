@@ -59,18 +59,7 @@ import seaborn as sns
 # ## Some example shapes in ABC dataset
 
 # %%
-# !ls 
-
-# %%
-# !pip install pymeshlab
-# # !pip install polyscope  # optional to render the MeshSet state
-
-# %%
-def describe_mesh(mesh):
-    print("# faces", mesh.face_number())
-    print("# edges", mesh.edge_number())
-    print("# vertices", mesh.vertex_number())
-
+# !ls data
 
 # %%
 DATA_DIR = pathlib.Path("./data/")
@@ -80,6 +69,13 @@ EX_OBJ_PATH = "data/00000050_80d90bfdd2e74e709956122a_trimesh_000.obj"
 # EX_OBJ_PATH = "data/obj/00008338/00008338_75b44178dbe14c99b75a0738_trimesh_008.obj"
 EX_FEAT_PATH = "data/00000050_80d90bfdd2e74e709956122a_features_000.yml"
 # EX_FEAT_PATH = "data/feat/00008338/00008338_75b44178dbe14c99b75a0738_features_008.yml"
+
+# %%
+def describe_mesh(mesh):
+    print("# faces", mesh.face_number())
+    print("# edges", mesh.edge_number())
+    print("# vertices", mesh.vertex_number())
+
 
 # %% [markdown]
 # TODO
@@ -131,7 +127,8 @@ def plot_point_cloud(matrix, ax=None, **kwargs):
             figsize=MPL_FIG_SIZE,
             subplot_kw=dict(projection="3d"),
         )
-        ax.set_box_aspect((np.ptp(xs), np.ptp(ys), np.ptp(zs)))
+
+    ax.set_box_aspect((np.ptp(xs), np.ptp(ys), np.ptp(zs)))
 
     kwargs.setdefault("s", 1)
     ax.scatter(xs, ys, zs, **kwargs)
@@ -174,8 +171,7 @@ describe_mesh(mesh_pc_mc)
 plot_point_cloud(mesh_pc_mc.vertex_matrix())
 
 # %% [markdown]
-# #### Are MC sampled points different from orig vertices?
-# YES for all
+# Q: Are MC sampled points different from orig vertices? YES for all
 
 # %%
 _orig_verts = pd.DataFrame(
@@ -237,8 +233,7 @@ curve_point_idxs.sort_values().diff().describe()
 # idx starts from 0 and increments by 1 at most, i.e. continous
 
 # %% [markdown]
-# #### Max curve point index << # orig points; what gives?
-# See PC plot below
+# Q: Max curve point index << # orig points; what gives? See PC plot below
 # - curve points had the smallest indices
 # - correctness of indices is also verified!
 
@@ -304,7 +299,6 @@ ax = plot_point_cloud(corner_points, ax=ax, s=3, c="r")
 
 # %% [markdown]
 # ## Nearest Neighbour assignment/transfer for GT labels
-# ### Prep sampled data
 
 # %%
 sampled_pts = (
@@ -376,12 +370,19 @@ sampled_pts_ = (
 )
 sampled_pts_.shape
 
-# %%
-_edge_points = sampled_pts_.query("is_edge == True")[["x", "y", "z"]].values
-ax = plot_point_cloud(_edge_points, c="g")
 
-_corner_ponits = sampled_pts_.query("is_corner == True")[["x", "y", "z"]].values
-ax = plot_point_cloud(_corner_ponits, ax=ax, s=5, c="r")
+# %%
+def plot_edges_and_corners(pcloud_, ax=None):
+    _edge_points = pcloud_.query("is_edge == True")[["x", "y", "z"]].values
+    ax = plot_point_cloud(_edge_points, ax=ax, c="g")
+
+    _corner_ponits = pcloud_.query("is_corner == True")[["x", "y", "z"]].values
+    ax = plot_point_cloud(_corner_ponits, ax=ax, s=5, c="r")
+    return ax
+
+
+# %%
+plot_edges_and_corners(sampled_pts_)
 
 # %% [markdown]
 # ## Test training_data.py
@@ -406,19 +407,11 @@ pcloud_.sample(10)
 # %%
 pcloud_[pcloud_.curv_id.isin(pcloud_.curv_id.drop_duplicates().sample())]
 
-
-# %%
-def plot_edges_and_corners(pcloud_):
-    _edge_points = pcloud_.query("is_edge == True")[["x", "y", "z"]].values
-    ax = plot_point_cloud(_edge_points, c="g")
-
-    _corner_ponits = pcloud_.query("is_corner == True")[["x", "y", "z"]].values
-    ax = plot_point_cloud(_corner_ponits, ax=ax, s=5, c="r")
-    return ax
-
-
 # %%
 plot_edges_and_corners(pcloud_)
+
+# %%
+pcloud_
 
 # %% [markdown]
 # ### Save pcloud
@@ -426,14 +419,14 @@ plot_edges_and_corners(pcloud_)
 # %%
 print(training_data._format_pcloud_filename(EX_FEAT_PATH))
 
-# %%
-training_data.write_pcloud(pcloud_, EX_FEAT_PATH)
 
+# %%
+# training_data.write_pcloud(pcloud_, EX_FEAT_PATH)
 
 # %% [markdown]
 # ## EDA for feat files
 #
-# ### Q: proportion of files with uncommon types of curves
+# Q: proportion of files with uncommon types of curves
 
 # %%
 def read_curve_type_stats(path) -> pd.Series:
@@ -455,7 +448,7 @@ len(feat_paths)
 
 # %% [markdown]
 # ---
-# #### digress: matching obj files all exist?
+# digress: matching obj files all exist?
 # YES
 
 # %%
@@ -472,13 +465,13 @@ for feat_path in feat_paths:
 
 # %% [markdown]
 # ---
-# **~30 min** to go over the entire feature yml files
+# Info: **~30 min** to go over the entire feature yml files
 
 # %%
-# %%time
-with multiprocessing.Pool() as pool:
-    curve_type_stats = pool.map(read_curve_type_stats, feat_paths)
-len(curve_type_stats)
+# # %%time
+# with multiprocessing.Pool() as pool:
+#     curve_type_stats = pool.map(read_curve_type_stats, feat_paths)
+# len(curve_type_stats)
 
 # %%
 curtype = (
@@ -507,13 +500,14 @@ loaded_pcloud = pd.read_parquet("data/pcloud/00000004_pcloud_points.parq")
 loaded_pcloud.shape
 
 # %%
-plot_point_cloud(loaded_pcloud[["x", "y", "z"]].values)
+__, axs = plt.subplots(
+    1, 2,
+    figsize=(20, 10),
+    subplot_kw=dict(projection="3d"))
 
-# %%
-plot_edges_and_corners(loaded_pcloud)
+plot_point_cloud(loaded_pcloud[["x", "y", "z"]].values, ax=axs[0])
 
-# %%
-# !pip install tqdm
+plot_edges_and_corners(loaded_pcloud, ax=axs[1])
 
 # %% tags=[]
 import tqdm
@@ -525,7 +519,9 @@ with multiprocessing.Pool() as pool:
 
 # 1.5 hrs
 
+# %%
+
 # %% [markdown]
-# ## MISC
+# ## Misc
 
 # %%
