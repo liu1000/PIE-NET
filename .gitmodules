@@ -1,0 +1,3 @@
+[submodule "pointnetpp"]
+	path = pointnetpp
+	url = git@github.com:liu1000/pointnetpp.git
