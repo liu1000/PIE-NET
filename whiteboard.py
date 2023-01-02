@@ -376,7 +376,32 @@ ax = plot_point_cloud(_edge_points, c="g")
 _corner_ponits = sampled_pts_.query("is_corner == True")[["x", "y", "z"]].values
 ax = plot_point_cloud(_corner_ponits, ax=ax, s=5, c="r")
 
+# %% [markdown]
+# ## Test training_data.py
+
 # %%
+import training_data
+
+# %%
+# %%time
+cad_model = training_data.read_obj(EX_OBJ_PATH)
+feat = training_data.read_feat(EX_FEAT_PATH)
+
+pcloud = training_data.sample_point_cloud(cad_model)
+
+curv = training_data.mark_edges_and_corners(cad_model.mesh(0), feat)
+
+pcloud_ = training_data.transfer_labels(curv, pcloud)
+
+# %%
+pcloud_.sample(10)
+
+# %%
+_edge_points = pcloud_.query("is_edge == True")[["x", "y", "z"]].values
+ax = plot_point_cloud(_edge_points, c="g")
+
+_corner_ponits = pcloud_.query("is_corner == True")[["x", "y", "z"]].values
+ax = plot_point_cloud(_corner_ponits, ax=ax, s=5, c="r")
 
 # %% [markdown]
 # ## MISC
