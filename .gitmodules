@@ -1,3 +1,6 @@
 [submodule "pointnetpp"]
 	path = pointnetpp
 	url = git@github.com:liu1000/pointnetpp.git
+[submodule "pointnet2-tensorflow2"]
+	path = pointnet2-tensorflow2
+	url = git@github.com:dgriffiths3/pointnet2-tensorflow2.git
