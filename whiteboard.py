@@ -7,9 +7,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.4
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: conda-tf-old
 #     language: python
-#     name: python3
+#     name: conda-tf-old
 # ---
 
 # %%
@@ -39,6 +39,7 @@ import seaborn as sns
 # !python -V
 
 # %% [markdown]
+# # Training Data
 # ## Download Data
 # #### `.obj` files
 
@@ -522,6 +523,108 @@ with multiprocessing.Pool() as pool:
 # %%
 
 # %% [markdown]
-# ## Misc
+# # Point classification (+ offset regression)
+# TODO
+# - [ ] :try https://github.com/dgriffiths3/pointnet2-tensorflow2
+#   - [ ] if no good, *try https://github.com/charlesq34/pointnet2/pull/154
+# - [ ] Look at TF records API
+# - [ ] :check how to point cls with PointNet++
+#   - loss?
+# - [ ] :check how to corrd reg with PointNet++
+#   - loss?
+#     - maybe skip coord reg for now if adding too much complexity to the custom loss
+#   
+# CUDA TODO (ref: https://docs.nvidia.com/cuda/cuda-installation-guide-linux/contents.html#)
+# - [x] might need to upgrade nvidia driver to 525.60.13; UPGRADED
+
+# %%
+import pathlib
+
+import tensorflow as tf
+
+# %%
+SCANNET_TRAIN_PATH = "pointnet2-tensorflow2/data/scannet_train.tfrecord"
+
+# %%
+raw_dataset = tf.data.TFRecordDataset(SCANNET_TRAIN_PATH)
+raw_dataset
+
+# %%
+for raw_record in raw_dataset.take(1):
+    example = tf.train.Example()
+    example.ParseFromString(raw_record.numpy())
+
+# %%
+result = {}
+# example.features.feature is the dictionary
+for key, feature in example.features.feature.items():
+  # The values are the Feature objects which contain a `kind` which contains:
+  # one of three fields: bytes_list, float_list, int64_list
+
+  kind = feature.WhichOneof('kind')
+  result[key] = np.array(getattr(feature, kind).value)
+
+result
+
+# %%
+result['labels'].shape
+
+# %%
+result['points'].shape
+
+# %% [markdown]
+# ## Load dataset
+
+# %%
+PCLOUD_DIR = DATA_DIR / "pcloud"
+EX_PCLOUD_PATH = PCLOUD_DIR / "00000002_pcloud_points.parq"
+
+
+# %%
+def _load_single_pcloud(path, label_type=""):
+    label_col = f"is_{label_type}"
+    points = (
+        pd.read_parquet(path)
+            .drop_duplicates(["x", "y", "z"])  # TODO shouuld keep the closest
+            .assign(label=lambda df: df[label_col].astype(int))
+    )
+    point_coords = points[["x", "y", "z"]].values
+    point_labels = points[["label"]].values
+    return point_coords, point_labels
+
+
+# %%
+point_coords, point_labels = _load_single_pcloud(EX_PCLOUD_PATH, label_type="edge")
+
+
+# %%
+def load_dataset_from_dir(path, label_type="edge", n_files=None):
+    paths = sorted(str(p) for p in path.glob("*.parq"))
+    if n_files:
+        paths = paths[:n_files]
+    
+    features, labels = [], []
+    for path in paths:
+        coords, per_pt_labels = _load_single_pcloud(path, label_type=label_type)
+        features.append(coords)
+        labels.append(per_pt_labels)
+    
+    return pd.DataFrame(dict(features=features, labels=labels))
+
+
+
+# %%
+dataset = load_dataset_from_dir(PCLOUD_DIR, n_files=100)
+y = dataset.pop("labels")
+x = dataset
+
+# %%
+x.features.values[0].shape
+
+# %%
+y.values[0].shape
+
+# %% [markdown]
+# # Misc
 
 # %%
