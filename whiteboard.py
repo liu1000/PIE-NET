@@ -7,9 +7,9 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.14.4
 #   kernelspec:
-#     display_name: conda-tf-old
+#     display_name: Python 3 (ipykernel)
 #     language: python
-#     name: conda-tf-old
+#     name: python3
 # ---
 
 # %%
@@ -78,11 +78,32 @@ def describe_mesh(mesh):
     print("# vertices", mesh.vertex_number())
 
 
+# %%
+MPL_FIG_SIZE = (10, 10)
+
+def plot_point_cloud(matrix, ax=None, **kwargs):
+    xs = matrix[:, 0]
+    ys = matrix[:, 1]
+    zs = matrix[:, 2]
+    
+    if ax is None:
+        __, ax = plt.subplots(
+            figsize=MPL_FIG_SIZE,
+            subplot_kw=dict(projection="3d"),
+        )
+
+    ax.set_box_aspect((np.ptp(xs), np.ptp(ys), np.ptp(zs)))
+
+    kwargs.setdefault("s", 1)
+    ax.scatter(xs, ys, zs, **kwargs)
+    return ax
+
+
 # %% [markdown]
 # TODO
-# - [ ] *decide which to use to load .step file, blender or gmsh
+# - [x] *decide which to use to load .step file, blender or gmsh
 #   - blender does not support .step file by default
-#   - [ ] *take a look at gmsh
+#   - [x] *take a look at gmsh
 #   - [x] **but maybe using .obj + .feat is sufficient?**
 #     - looks feasible according to ABC paper
 # - [x] figure out how to iter through surfaces in a CAD model (loaded from a .obj file)
@@ -116,33 +137,13 @@ sampled_orig_points = np.array(random.sample(list(orig_points), SAMPLE_K))
 sampled_orig_points[:3]
 
 # %%
-MPL_FIG_SIZE = (12, 12)
-
-def plot_point_cloud(matrix, ax=None, **kwargs):
-    xs = matrix[:, 0]
-    ys = matrix[:, 1]
-    zs = matrix[:, 2]
-    
-    if ax is None:
-        __, ax = plt.subplots(
-            figsize=MPL_FIG_SIZE,
-            subplot_kw=dict(projection="3d"),
-        )
-
-    ax.set_box_aspect((np.ptp(xs), np.ptp(ys), np.ptp(zs)))
-
-    kwargs.setdefault("s", 1)
-    ax.scatter(xs, ys, zs, **kwargs)
-    return ax
-
-
-# %%
 plot_point_cloud(sampled_orig_points)
 
 # %% [markdown]
 # ### Sampling
 
 # %%
+# %%time
 ms.set_current_mesh(0)
 ms.generate_sampling_poisson_disk(
     samplenum=SAMPLE_K,
@@ -185,10 +186,238 @@ _sampled_pts = pd.DataFrame(
     columns=["x", "y", "z"])
 print(_sampled_pts.shape)
 
-_orig_verts.drop_duplicates().shape[0] + _sampled_pts.drop_duplicates().shape[0]
+_orig_verts.merge(_sampled_pts).shape
+
+# %% [markdown]
+# ### Sampling quick study (post-hoc)
+# TODO
+# - [x] :sample 1000 ABC models
+# - [x] run poissong disk
+# - [x] run MC
+# - [x] compare speed
+# - [x] compare some summary stats
+#   - [x] number of sampled points
+#   - [x] 1-nearest neighbor distance, mean/std (need to normalize metrics to compare cross different models)
+#     - normalized by range
+# - [x] compare some qualititive plots
 
 # %%
-pd.concat([_orig_verts, _sampled_pts]).drop_duplicates().shape
+import itertools
+import random
+import time
+
+import training_data
+
+random.seed(2023)
+
+
+def sample_some_abc_obj_paths(n=1000):
+    obj_dir_paths = [x for x in pathlib.Path('data/obj').iterdir() if x.is_dir()]
+    obj_file_paths = itertools.chain.from_iterable(p.glob("*.obj") for p in obj_dir_paths)
+    return random.sample(list(obj_file_paths), n)
+
+sample_some_abc_obj_paths(3)
+
+
+# %%
+def read_run_sampling(path, sampling="mc"):
+    ms = training_data.read_obj(path)
+    ms.set_current_mesh(0)
+    
+    t0 = time.time()
+
+    if sampling == "mc":
+        ms.generate_sampling_montecarlo(samplenum=training_data.N_SAMPLING_POINTS)
+    elif sampling == "poisson-disk":
+        ms.generate_sampling_poisson_disk(samplenum=training_data.N_SAMPLING_POINTS)
+    elif sampling == "poisson-disk-strict":
+        ms.generate_sampling_poisson_disk(samplenum=training_data.N_SAMPLING_POINTS, exactnumflag=True)
+    else:
+        raise ValueError(f"Unsupported sampling: {sampling}")
+
+    t1 = time.time()
+    seconds = t1 - t0
+
+    pcloud = pd.DataFrame(
+        ms.current_mesh().vertex_matrix(),
+        columns=["x", "y", "z"]
+    )
+    return pcloud, seconds
+
+
+# %%
+sampled_abc_obj_paths = sample_some_abc_obj_paths(1000)
+
+# %% [markdown]
+# #### speed of sampling
+
+# %%
+mc_pclouds, mc_times = [], []
+for path in sampled_abc_obj_paths:
+    pcloud, seconds = read_run_sampling(path, "mc")
+    mc_pclouds.append(pcloud)
+    mc_times.append(seconds)
+
+sum(mc_times)
+
+# %%
+pdisk_pclouds, pdisk_times = [], []
+for path in sampled_abc_obj_paths:
+    pcloud, seconds = read_run_sampling(path, "poisson-disk")
+    pdisk_pclouds.append(pcloud)
+    pdisk_times.append(seconds)
+
+sum(pdisk_times)
+
+# %%
+strict_pdisk_pclouds, strict_pdisk_times = [], []
+for path in sampled_abc_obj_paths:
+    pcloud, seconds = read_run_sampling(path, "poisson-disk-strict")
+    strict_pdisk_pclouds.append(pcloud)
+    strict_pdisk_times.append(seconds)
+
+sum(strict_pdisk_times)
+
+
+# %%
+def compare_plots(mc_pcloud, pdisk_plcoud):
+    __, axs = plt.subplots(1, 2, figsize=(20, 10), subplot_kw=dict(projection="3d"))
+
+    plot_point_cloud(mc_pcloud.values, ax=axs[0])
+    plot_point_cloud(pdisk_plcoud.values, ax=axs[1])
+
+i = 0
+compare_plots(mc_pclouds[i], pdisk_pclouds[i])
+
+# %%
+compare_plots(mc_pclouds[0], strict_pdisk_pclouds[0])
+
+# %%
+compare_plots(mc_pclouds[871], strict_pdisk_pclouds[871])
+
+
+# %% [markdown]
+# *Q*: Why do Poisson-Disk based point clouds show structural details better (than the MC based)?
+#
+# *Discussion*: Point clouds sampled by the Poisson-Disk algorithm were less noisy, as shown by lower dispersions in the 1-NN summary stats below.
+# **In other words, the space distribution of points were more regular. This made [edges and corners, the irregulars,](https://cecas.clemson.edu/~stb/ece847/internal/classic_vision_papers/attneave_1954.pdf) stand out more.**
+# I would guess that PIE-NET perform better for point clouds sampled with Poisson-Disk.
+
+# %% [markdown]
+# #### Summary stats
+# ##### # points
+
+# %%
+def number_of_points(pclouds):
+    return pd.Series([len(df) for df in pclouds])
+
+number_of_points(mc_pclouds).plot(kind="hist", bins=20)
+
+# %%
+number_of_points(pdisk_pclouds).plot(kind="hist", bins=20)
+
+# %%
+number_of_points(strict_pdisk_pclouds).plot(kind="hist", bins=20)
+
+# %% [markdown]
+# ##### 1nn distance
+
+# %%
+import multiprocessing
+
+
+def _one_nn(row, orig_df):
+    loo_df = orig_df[orig_df.x.ne(row.x) | orig_df.y.ne(row.y) | orig_df.z.ne(row.z)]
+    assert len(loo_df) + 1 == len(orig_df), f"{len(loo_df)}, {len(orig_df)}"
+
+    dist_vects = loo_df[["x", "y", "z"]].values - row[["x", "y", "z"]].values
+    dist = np.square(dist_vects).sum(axis=1)
+    return min(dist)
+
+
+def add_1nn_dist(pcloud):
+    pcloud["onn_dist"] = pcloud.apply(_one_nn, orig_df=pcloud, axis=1)
+    return pcloud
+
+# add_1nn_dist(mc_pclouds[1])
+# mc_pclouds[1]
+
+
+# %%
+# %%time
+# pool = multiprocessing.Pool()
+
+# mc_pclouds_ = pool.map(add_1nn_dist, mc_pclouds)
+
+# pool.close()
+"""
+CPU times: user 2.03 s, sys: 865 ms, total: 2.89 s
+Wall time: 11min 15s
+"""
+
+# %%
+# for i, pcloud in enumerate(mc_pclouds_):
+#     pcloud.to_parquet(f"data/sampling_study_mc_pclouds/pc_{i}.parq")
+
+pd.read_parquet("data/sampling_study_mc_pclouds/pc_879.parq")
+
+# %% tags=[]
+# pool = multiprocessing.Pool()
+
+# strict_pdisk_pclouds_ = pool.map(add_1nn_dist, strict_pdisk_pclouds)
+
+# pool.close()
+
+# %%
+# for i, pcloud in enumerate(strict_pdisk_pclouds_):
+#     pcloud.to_parquet(f"data/sampling_study_strict_pdisk_pclouds/pc_{i}.parq")
+
+# pd.read_parquet("data/sampling_study_strict_pdisk_pclouds/pc_879.parq")
+
+# %%
+####### Distribution of 1NN distance for one model
+PCLOUD_IND = 871
+
+mc_pclouds_[PCLOUD_IND].onn_dist.plot(kind="hist", bins=50, xlim=(0, 2.5), ylim=(0, 5000))
+
+# %%
+mc_pclouds_[PCLOUD_IND].onn_dist.std()
+
+# %%
+strict_pdisk_pclouds_[PCLOUD_IND].onn_dist.plot(kind="hist", bins=15, xlim=(0.0, 2.5), ylim=(0, 5000))
+
+# %%
+strict_pdisk_pclouds_[PCLOUD_IND].onn_dist.std()
+
+# %%
+###### Distribution of (normalized) dispersions of 1NN distances for 1000 models
+mc_stds, spd_stds = [], []
+
+for i in range(len(mc_pclouds_)):
+    onn_dist_range = mc_pclouds_[i].onn_dist.max() - mc_pclouds_[i].onn_dist.min()
+    # to normalize STDs of different models 
+
+    mc_norm_std = mc_pclouds_[i].onn_dist.std() / onn_dist_range
+    mc_stds.append(mc_norm_std)
+
+    spd_norm_std = strict_pdisk_pclouds_[i].onn_dist.std() / onn_dist_range
+    spd_stds.append(spd_norm_std)
+
+len(mc_stds), len(spd_stds)
+
+# %%
+(
+    pd.DataFrame({"MC 1NN std": mc_stds, "Poisson-Disk (strict) std": spd_stds})
+        .melt(var_name="metric")
+        .pipe((sns.displot, "data"),
+              x="value", hue="metric", row="metric", aspect=2/1, height=3)
+)
+
+# %%
+
+# %%
+
+# %%
 
 # %% [markdown]
 # ## Check `feat.yaml`
