@@ -8,17 +8,19 @@ It is undecided whether curve proposal and proposal selection will be implemente
 ### Training Data
 *For my quick study on point cloud sampling methods, see [this Markdown file](sampling_discussion.md).*
 
-CAD models (`feat`s and `obj`s) were downloaded from [2](https://deep-geometry.github.io/abc-dataset/), before a Python package [3](https://pymeshlab.readthedocs.io/en/latest/filter_list.html#generate_sampling_poisson_disk) was used to sample point clouds from the `obj`s. I experimented two sampling methods: MC and Poisson Disk. The former was selected due to its faster speed of sampling, although the latter yielded better point clouds. For comparison, see [here](<TODOlink to notebook>).
+CAD models (`feat`s and `obj`s) were downloaded from [[2](https://deep-geometry.github.io/abc-dataset/)], before a Python package [[3](https://pymeshlab.readthedocs.io/en/latest/filter_list.html#generate_sampling_poisson_disk)] was used to sample point clouds from the `obj`s.
+I experimented two sampling methods: Monte Carlo and Poisson Disk. The former was selected due to its faster speed of sampling, although the latter yielded better point clouds. For comparison, see [here](sampling_discussion.md).
 
-Ground truth, including point classes and offsets, were calculated and transfered from the `feat`s to the sampled point clouds.
+Ground truth, including point classes and offsets, was calculated and transferred from the `feat`s to the sampled point clouds.
 
 ### Point Classification
-In the paper, point classification was done with PointNet++. In this implementation, PointNet++ Tensorflow 2.0 layers were used from a public repo [4](https://github.com/dgriffiths3/pointnet2-tensorflow2). I modified the existing semantic segmentation model to support point classification by adjusting final outputs and adding a custom loss.
+In the paper, point classification was done with PointNet++. In this implementation, PointNet++ Tensorflow 2.0 layers were used from a public repo [[4](https://github.com/dgriffiths3/pointnet2-tensorflow2)].
+I modified the existing semantic segmentation model to support point classification by adjusting final outputs and adding a custom loss.
 
 
 ## Failed Attempts
-Here I document some failed attempts as warnings for others to avoid.
-- The original PointNet++ implementation [5](https://github.com/charlesq34/pointnet2) was not as useful because it requires older versions of Python and TF.
+Some failed attempts are documented here as warnings for others to avoid.
+- The original PointNet++ implementation [[5](https://github.com/charlesq34/pointnet2)] was not as useful because it requires older versions of Python and TF.
 - Software like Blender or gmsh could also be used to sample point clouds from CAD models. But they generally do not have great Python APIs and come with redundant functionalities.
 
 
