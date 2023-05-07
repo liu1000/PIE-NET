@@ -7,7 +7,7 @@ As in the paper, 8096 was set to be the desired number of points for point cloud
 
 
 ## Visual Comparison and Discussion
-As an example, point clouds sampled from one CAD model by the two methods are displayed below, Monte Carlo on the left and Poisson-Disk right.
+As an example, point clouds sampled from one CAD model by the two methods are displayed below, MC on the left and Poisson-Disk right.
 
 <img src="data/sampling_study_plots/fig1.2.png"/>
 
@@ -19,28 +19,28 @@ I would guess that PIE-NET also perform better for point clouds sampled with Poi
 
 
 ## Quantitative Comparison
-#### Sampling Speed
-Poisson-Disk was orders of magnitude slower than Monte Carlo.
-| Monte Carlo | Poisson-Disk |
+### Sampling Speed
+Poisson-Disk was orders of magnitude slower than MC.
+| MC | Poisson-Disk |
 |---:|---:|
 |3.5 seconds| 1302.4 seconds|
 
 *Table 1. Total sampling time for 1000 point clouds.*
 
-#### Number of Points
-Poisson-Disk could not generate exactly the desired number of points (max $5%$ error).
-| Monte Carlo | Poisson-Disk |
+### Number of Points
+Poisson-Disk could not generate exactly the desired number of points (max $5\%$ error).
+| MC | Poisson-Disk |
 |---:|---:|
 |8096.0| 8093.8|
 
 *Table 2. Average number of sampled points for 1000 point clouds.*
 
-#### Noises
+### Noises
 To measure the noises in point clouds, *1-NN distance* was calculated for each point for every point cloud.
 
 <img src="data/sampling_study_plots/fig2.1.png" style="width: 70%"/>
 
-*Fig 1. Distribution of 1-NN distances for an example point cloud. Poisson-Disk (orange) had a much smaller dispersion and a larger minimum ($2r$, where $r$ is the radius of the 'disk').*
+*Fig 1. Distribution of 1-NN distances for an example point cloud. Poisson-Disk (orange) had a much smaller dispersion and a larger minimum *($2r$, where $r$ is the radius of the 'disk').
 
 ---
 
