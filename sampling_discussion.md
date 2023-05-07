@@ -28,7 +28,7 @@ Poisson-Disk was orders of magnitude slower than MC.
 *Table 1. Total sampling time for 1000 point clouds.*
 
 ### Number of Points
-Poisson-Disk could not generate exactly the desired number of points (max $5\%$ error).
+Poisson-Disk could not generate exactly the desired number of points (max 5% error).
 | MC | Poisson-Disk |
 |---:|---:|
 |8096.0| 8093.8|
@@ -40,7 +40,7 @@ To measure the noises in point clouds, *1-NN distance* was calculated for each p
 
 <img src="data/sampling_study_plots/fig2.1.png" style="width: 70%"/>
 
-*Fig 1. Distribution of 1-NN distances for an example point cloud. Poisson-Disk (orange) had a much smaller dispersion and a larger minimum *($2r$, where $r$ is the radius of the 'disk').
+*Fig 1. Distribution of 1-NN distances for an example point cloud. Poisson-Disk (orange) had a much smaller dispersion and a larger minimum* ($2r$, where $r$ is the radius of the 'disk').
 
 ---
 
