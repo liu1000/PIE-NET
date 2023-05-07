@@ -79,6 +79,7 @@ def describe_mesh(mesh):
 
 
 # %%
+SAMPLE_K = 8096
 MPL_FIG_SIZE = (10, 10)
 
 def plot_point_cloud(matrix, ax=None, **kwargs):
@@ -130,8 +131,6 @@ type(orig_points), len(orig_points)
 
 # %%
 import random
-
-SAMPLE_K = 8096
 
 sampled_orig_points = np.array(random.sample(list(orig_points), SAMPLE_K))
 sampled_orig_points[:3]
@@ -249,7 +248,7 @@ def read_run_sampling(path, sampling="mc"):
 sampled_abc_obj_paths = sample_some_abc_obj_paths(1000)
 
 # %% [markdown]
-# #### speed of sampling
+# #### Speed of sampling
 
 # %%
 mc_pclouds, mc_times = [], []
@@ -279,6 +278,19 @@ for path in sampled_abc_obj_paths:
 sum(strict_pdisk_times)
 
 
+# %% [markdown]
+# #### Visual comparison
+
+# %%
+def reload_sampled_pclouds(n, method):
+    for i in range(n):
+        path = f"data/sampling_study_{method}_pclouds/pc_{i}.parq"
+        yield pd.read_parquet(path)
+
+mc_pclouds_ = list(reload_sampled_pclouds(1000, "mc"))
+strict_pdisk_pclouds_ = list(reload_sampled_pclouds(1000, "strict_pdisk"))
+
+
 # %%
 def compare_plots(mc_pcloud, pdisk_plcoud):
     __, axs = plt.subplots(1, 2, figsize=(20, 10), subplot_kw=dict(projection="3d"))
@@ -286,15 +298,15 @@ def compare_plots(mc_pcloud, pdisk_plcoud):
     plot_point_cloud(mc_pcloud.values, ax=axs[0])
     plot_point_cloud(pdisk_plcoud.values, ax=axs[1])
 
-i = 0
-compare_plots(mc_pclouds[i], pdisk_pclouds[i])
 
 # %%
-compare_plots(mc_pclouds[0], strict_pdisk_pclouds[0])
+compare_plots(mc_pclouds_[0], strict_pdisk_pclouds_[0])
 
 # %%
-compare_plots(mc_pclouds[871], strict_pdisk_pclouds[871])
+PCLOUD_IND = 871  # an example
 
+# %%
+compare_plots(mc_pclouds_[PCLOUD_IND], strict_pdisk_pclouds_[PCLOUD_IND])
 
 # %% [markdown]
 # *Q*: Why do Poisson-Disk based point clouds show structural details better (than the MC based)?
@@ -308,16 +320,38 @@ compare_plots(mc_pclouds[871], strict_pdisk_pclouds[871])
 # ##### # points
 
 # %%
+MC_SAMPLING = "MC"
+PD_SAMPLING = "Poisson-Disk"
+STRICT_PD_SAMPLING = "Poisson-Disk (strict)"
+
+
+# %%
 def number_of_points(pclouds):
     return pd.Series([len(df) for df in pclouds])
 
-number_of_points(mc_pclouds).plot(kind="hist", bins=20)
 
 # %%
-number_of_points(pdisk_pclouds).plot(kind="hist", bins=20)
+(
+    pd.DataFrame({MC_SAMPLING: number_of_points(mc_pclouds_),
+                  PD_SAMPLING: number_of_points(pdisk_pclouds), 
+                  STRICT_PD_SAMPLING: number_of_points(strict_pdisk_pclouds_)})
+        .mean()
+)
 
 # %%
-number_of_points(strict_pdisk_pclouds).plot(kind="hist", bins=20)
+g = (
+    pd.DataFrame({MC_SAMPLING: number_of_points(mc_pclouds_),
+                  PD_SAMPLING: number_of_points(pdisk_pclouds), 
+                  STRICT_PD_SAMPLING: number_of_points(strict_pdisk_pclouds_)})
+        .melt(var_name="Sampling method", value_name="Number of points")
+        .pipe((sns.displot, "data"), kind="hist", bins=50,
+              aspect=2/1, height=2,
+              x="Number of points",
+              row="Sampling method", row_order=[MC_SAMPLING, STRICT_PD_SAMPLING, PD_SAMPLING],
+              hue="Sampling method", hue_order=[MC_SAMPLING, STRICT_PD_SAMPLING, PD_SAMPLING],)
+)
+g.figure.suptitle(f"Distributions of actual numbers of points (desired was {SAMPLE_K})")
+g.tight_layout()
 
 # %% [markdown]
 # ##### 1nn distance
@@ -376,15 +410,20 @@ pd.read_parquet("data/sampling_study_mc_pclouds/pc_879.parq")
 
 # %%
 ####### Distribution of 1NN distance for one model
-PCLOUD_IND = 871
+g = (
+    pd.DataFrame({MC_SAMPLING: mc_pclouds_[PCLOUD_IND].onn_dist,
+                  STRICT_PD_SAMPLING: strict_pdisk_pclouds_[PCLOUD_IND].onn_dist
+                 })
+        .melt(var_name="Sampling method", value_name="1-NN distance")
+        .pipe((sns.displot, "data"), kind="hist",
+              aspect=2/1, height=3,
+              x="1-NN distance", row="Sampling method", hue="Sampling method")
+)
+g.figure.suptitle(f"Noise comparison (Example model)")
+g.tight_layout()
 
-mc_pclouds_[PCLOUD_IND].onn_dist.plot(kind="hist", bins=50, xlim=(0, 2.5), ylim=(0, 5000))
-
-# %%
+# %% tags=[]
 mc_pclouds_[PCLOUD_IND].onn_dist.std()
-
-# %%
-strict_pdisk_pclouds_[PCLOUD_IND].onn_dist.plot(kind="hist", bins=15, xlim=(0.0, 2.5), ylim=(0, 5000))
 
 # %%
 strict_pdisk_pclouds_[PCLOUD_IND].onn_dist.std()
@@ -406,18 +445,15 @@ for i in range(len(mc_pclouds_)):
 len(mc_stds), len(spd_stds)
 
 # %%
-(
-    pd.DataFrame({"MC 1NN std": mc_stds, "Poisson-Disk (strict) std": spd_stds})
-        .melt(var_name="metric")
+g = (
+    pd.DataFrame({MC_SAMPLING: mc_stds, STRICT_PD_SAMPLING: spd_stds})
+        .melt(var_name="Sampling method", value_name="(Normalized) STD of 1-NN distance")
         .pipe((sns.displot, "data"),
-              x="value", hue="metric", row="metric", aspect=2/1, height=3)
+              x="(Normalized) STD of 1-NN distance", hue="Sampling method", row="Sampling method",
+              aspect=2/1, height=3)
 )
-
-# %%
-
-# %%
-
-# %%
+g.figure.suptitle("Noise comparison (All models)")
+g.tight_layout()
 
 # %% [markdown]
 # ## Check `feat.yaml`
