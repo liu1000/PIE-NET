@@ -24,6 +24,7 @@ Poisson-Disk was orders of magnitude slower than Monte Carlo.
 | Monte Carlo | Poisson-Disk |
 |---:|---:|
 |3.5 seconds| 1302.4 seconds|
+
 *Table 1. Total sampling time for 1000 point clouds.*
 
 #### Number of Points
@@ -31,15 +32,20 @@ Poisson-Disk could not generate exactly the desired number of points (max $5%$ e
 | Monte Carlo | Poisson-Disk |
 |---:|---:|
 |8096.0| 8093.8|
+
 *Table 2. Average number of sampled points for 1000 point clouds.*
 
 #### Noises
 To measure the noises in point clouds, *1-NN distance* was calculated for each point for every point cloud.
 
-<img src="data/sampling_study_plots/fig2.1.png"/>
+<img src="data/sampling_study_plots/fig2.1.png" style="width: 70%"/>
+
 *Fig 1. Distribution of 1-NN distances for an example point cloud. Poisson-Disk (orange) had a much smaller dispersion and a larger minimum ($2r$, where $r$ is the radius of the 'disk').*
 
-<img src="data/sampling_study_plots/fig2.2.png"/>
+---
+
+<img src="data/sampling_study_plots/fig2.2.png" style="width: 70%"/>
+
 *Fig 2. Distribution of STDs of 1-NN distances for 1000 point clouds. Overall, Poisson-Disk (orange) had smaller dispersions of 1-NN distances, meaning points were more regularly distributed over the object surface.*
 
 
