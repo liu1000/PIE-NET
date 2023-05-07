@@ -12,11 +12,28 @@ As an example, point clouds sampled from the same CAD model by the two methods a
 
 *Q*: Why did Poisson-Disk based point clouds show structural details better?
 
-*Discussion*: Point clouds sampled by the Poisson-Disk algorithm were less noisy, as shown by lower dispersions of 1-NN distances in the following section.
+*Discussion*: Point clouds sampled by the Poisson-Disk algorithm were less noisy, as evidenced by lower dispersions of 1-NN distances in the following section.
 **In other words, the space distribution of points were more regular. This made edges and corners, the irregulars [[3](https://cecas.clemson.edu/~stb/ece847/internal/classic_vision_papers/attneave_1954.pdf)], stand out more.**
 I would guess that PIE-NET perform better for point clouds sampled with Poisson-Disk.
 
 ## Quantitative Comparison
+#### Sampling Speed
+| Monte Carlo | Poisson-Disk |
+|---:|---:|
+|3.5 seconds| 1302.4 seconds|
+*Table 1. Total sampling time for 1000 CAD models.*
+
+#### Number of Points
+| Monte Carlo | Poisson-Disk |
+|---:|---:|
+|8096.0| 8093.8|
+*Table 2. Average number of sampled points for 1000 CAD models.*
+
+(Note: faster but yield more point exists, this is because PD focus on minimal distance rather than total number of points.
+
+
+#### Noise
+
 
 ## References
 1. [PIE-NET: Parametric Inference of Point Cloud Edges](https://arxiv.org/abs/2007.04883)
